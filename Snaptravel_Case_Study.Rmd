@@ -1,0 +1,188 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(questionr)
+library(ggplot2)
+library(plyr)
+library(RColorBrewer)
+library(scales)
+library(ggthemes)
+```
+
+
+```{r}
+data <- read.csv("~/Downloads/bookings.csv")
+dat <- read.csv("~/Downloads/spend.csv")
+glimpse(data)
+```
+
+```{r}
+qualities <- c("HOTEL_ID","LOS", "CHECK_IN_DOW")
+countedCombos <- ddply(data,qualities,nrow)
+names(countedCombos) <- c(qualities,"count")
+countedCombos <- countedCombos[with(countedCombos, order(-count)),]
+countedCombos
+```
+
+```{r}
+datas <- filter(data, HOTEL_ID == 135545 | HOTEL_ID == 106789 |HOTEL_ID == 112918| HOTEL_ID == 122215| HOTEL_ID == 118586| HOTEL_ID == 150597)
+
+data1 <- filter(datas, LOS == 8) 
+
+freq(datas$DTA, sort = "dec")
+freq(data$DTA, sort = "dec")
+
+mean(datas$HOTEL_STARS)
+mean(data$HOTEL_STARS)
+
+
+mean(datas$ROOM_PRICE - datas$ROOM_COST)
+mean(data$ROOM_PRICE - data$ROOM_COST)
+```
+
+
+```{r}
+price <- c(132.93, 163.64)
+sameday <-  c(62.7, 58.6)
+stars <- c(2.85, 2.69)
+value <- c(132.93, 163.64, 62.7, 58.6, 2.85, 2.69)
+categories <- factor(c('Top Hotels', 'Others', 'Top Hotels', 'Others', 'Top Hotels', 'Others'))
+type <- factor(c('Room Price', 'Room Price', 'Same-day Booking Rate','Same-day Booking Rate', 'Star Rating', 'Star Rating'))
+compare <- data.frame(value, categories, type)
+```
+
+```{r}
+names <- c(
+                    `Room Price` = "Room Price (Dollars)",
+                    `Same-day Booking Rate` = "Same-day Booking Rate (Percentage)",
+                    `Star Rating` = "Star Rating (Stars)"
+                    )
+
+ggplot(data=compare, aes(x=categories, y=value, group=type, color = type)) +
+    geom_line(size = 1.5, allpha = 0.8) +
+    geom_point() +
+    facet_wrap(~ type, scales = "free_y", nrow = 1, strip.position = "left",labeller = as_labeller(names)) + 
+    ylab(NULL) +
+    labs(title = "Comparing Top Hotels versus Other Hotels",
+         subtitle = "How do popular itineraries' hotels stack up against others?",
+         x = "Hotel Type") +
+    theme_fivethirtyeight() +
+    theme(axis.title = element_text())
+```
+
+
+```{r}
+dat$avg <- dat$CLICKS / dat$SPEND
+click <- filter(dat, CLICKS != 0)
+glimpse(click)
+
+ddply(click, .(BOOKING_DOW), summarize,  avg=mean(avg))
+ddply(click, .(CHECK_IN_DOW), summarize,  avg=mean(avg))
+LOS <- ddply(click, .(LOS), summarize,  avg=mean(avg))
+DTA <- ddply(click, .(DTA), summarize,  avg=mean(avg))
+impress <- ddply(click, .(IMPRESSIONS), summarize,  avg=mean(avg))
+elimp <- ddply(click, .(ELIGIBLE_IMPRESSIONS), summarize,  avg=mean(avg))
+hotel <- ddply(click, .(HOTEL_ID), summarize,  avg=mean(avg))
+``` 
+
+
+```{r}
+hotel <- hotel[with(hotel, order(-avg)),]
+hotel
+```
+
+```{r}
+ggplot(DTA, aes(x=DTA, y=avg)) +
+  geom_line(color="#69b3a2") +
+  labs(title = "Clicks Over Spend across Days Until Arrival",
+       subtitle = "How does cost efficiency change over DTA?",
+       x = "Days Until Arrival",
+       y = "Average Click to Cost Ratio") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text())
+      
+
+ggplot(LOS, aes(x=LOS, y=avg)) +
+  geom_point() +
+      geom_line(color = '#BE3C21') +
+  labs(title = "Clicks Over Spend across Length of Stay",
+       subtitle = "How does cost efficiency change over LOS?",
+       x = "Length of Stay",
+       y = "Average Click to Cost Ratio") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text())
+
+
+
+```
+
+```{r}
+ggplot(impress, aes(x=IMPRESSIONS, y=avg)) +
+  geom_point() +
+      geom_line(color = '#BE3C21') +
+  labs(title = "Clicks Over Spend across Number of Impressions",
+       subtitle = "How does cost efficiency change according to the number of impressions",
+       x = "Number of Impressions",
+       y = "Average Click to Cost Ratio") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text())
+
+ggplot(elimp, aes(x=ELIGIBLE_IMPRESSIONS, y=avg)) + 
+  geom_point() +
+      geom_line(color = '#BE3C21') +
+  labs(title = "Clicks Over Spend across # of Eligible Impressions",
+       subtitle = "How does cost efficiency change according to the number of eligible impressions?",
+       x = "Number of Eligible Impressions",
+       y = "Average Click to Cost Ratio") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text())
+```
+
+
+
+```{r}
+group.means <- c(3.682809	, 3.815630, 3.715718	, 3.875369	, 3.601407	, 3.454813	, 3.826957)
+days <- factor(c('Monday','Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'))
+means.data <- data.frame(group.means, days)
+
+ggplot(means.data, aes(x= reorder(days, -group.means), y=group.means, , fill=days)) + 
+  geom_bar(stat='identity') +
+  theme_minimal() +
+  labs(title = "Clicks over Spend for Booking Day of the Week",
+       subtitle= "How does cost efficiency differ by booking DOW?",
+       x = "Day of Week",
+       y = "Average Click to Cost Ratio",
+       fill = "Days") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text()) +
+  scale_fill_brewer(palette = "Dark2")
+```
+
+```{r}
+means1 <- c(3.208268, 4.004590, 3.618723, 4.639620, 3.183739, 3.023174, 4.858925	)
+days1 <- factor(c('Monday','Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'))
+means.data1 <- data.frame(means1, days1)
+
+ggplot(means.data1, aes(x= reorder(days, -means1), y=means1, , fill=days1)) + 
+  geom_bar(stat='identity') +
+  labs(title = "Clicks over Spend for Check-in Day of the Week",
+       subtitle= "How does cost efficiency differ by check-in DOW?",
+       x = "Day of Week",
+       y = "Average Click to Cost Ratio",
+       fill = "Days") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text()) +
+  scale_fill_brewer(palette = "Dark2")
+```
+```{r}
+
+```
+
+
